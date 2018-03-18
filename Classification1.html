@@ -3,12 +3,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 % matplotlib inline
 
-df = pd.read_csv('kag_risk_factors_cervical_cancer.csv') 
-df1 = df.replace('?', np.nan) 
-df2 = df1.dropna(thresh=171,axis=1)  
-df3 = df2.dropna()  
-df4 = df3.convert_objects(convert_numeric=True)  
+df = pd.read_csv('kag_risk_factors_cervical_cancer.csv')     #Kaggleからダウンロードしたファイルの読み込み
+df1 = df.replace('?', np.nan)     #事実上欠損値である文字'?'をNaNで置換
+df2 = df1.dropna(thresh=171,axis=1)     #データの過剰損失を防ぐため858あるindexの2割以上がNaNの列は除外
+df3 = df2.dropna()    #NaNの含む行を除外
+df4 = df3.convert_objects(convert_numeric=True)    #object型からfloat型への変換
 
+#STDs以降は全て整数値であることが元データから確認済み
+#その中で、668のデータの和が極端に小さいのは除外できると考えて良い
+#Biopsyの10%未満の列は削除
+#複数の列を一斉に削除する
 drop_col = ['STDs:cervical condylomatosis','STDs:vaginal condylomatosis',
             'STDs:pelvic inflammatory disease','STDs:genital herpes',
            'STDs:molluscum contagiosum','STDs:AIDS','STDs:Hepatitis B',
@@ -24,16 +28,19 @@ X = np.array(Df.loc[:,
      'STDs:vulvo-perineal condylomatosis','STDs:syphilis','STDs:HIV',
      'STDs: Number of diagnosis','Dx:Cancer','Dx:HPV','Dx',
      'Hinselmann','Schiller','Citology','Biopsy']])
-     
+   
+#データを標準化
 from sklearn.preprocessing import StandardScaler
 scaler = StandardScaler()
 scaler.fit(X)
 X_std = scaler.fit_transform(X)
 
+#主成分分析
 from sklearn.decomposition import PCA
 pca = PCA(n_components=25)
 X_pca = pca.fit_transform(X_std)
 
+#k-means法により非階層型クラスタリングを実行
 from sklearn.cluster import KMeans
 km = KMeans(n_clusters=2,  
             init='random',  
@@ -43,11 +50,14 @@ km = KMeans(n_clusters=2,
             random_state=0, 
            )
 
-
+#クラスラベルの予想
 y_km = km.fit_predict(X_pca[:,]) 
+
 
 import seaborn as sns
 
+#相関係数から特徴量を削減(削減過程はここでは割愛)
+#相関係数が高いものは一方でもう一方を説明できるものと考えられるので、これにより特徴量を削減していった
 Xi = np.array(Df.loc[:,[ 'Smokes',
                          'Dx:HPV',
     
@@ -56,15 +66,15 @@ Xi = np.array(Df.loc[:,[ 'Smokes',
                          'STDs'         
 ]])
 
-
+#データの標準化
 scaler.fit(Xi)
 Xi_std = scaler.fit_transform(Xi)
 
-
+#主成分分析
 pcai = PCA(n_components=5)
 Xi_pcai = pcai.fit_transform(Xi_std)
 
-
+#k-means法
 kmi = KMeans(n_clusters=2,   
             init='random',  
             n_init=100,      
@@ -73,10 +83,10 @@ kmi = KMeans(n_clusters=2,
             random_state=0, 
            )
 
-
+#クラスラベルの予想
 yi_kmi = kmi.fit_predict(Xi_pcai[:,])
 
-
+#precision,accuracy,recallを出力
 from sklearn import metrics
 metrics.precision_score(y_km, yi_kmi)
 
