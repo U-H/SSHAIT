@@ -1,0 +1,90 @@
+import numpy as np 
+import pandas as pd
+import matplotlib.pyplot as plt
+% matplotlib inline
+
+df = pd.read_csv('kag_risk_factors_cervical_cancer.csv') 
+df1 = df.replace('?', np.nan) 
+df2 = df1.dropna(thresh=171,axis=1)  
+df3 = df2.dropna()  
+df4 = df3.convert_objects(convert_numeric=True)  
+
+drop_col = ['STDs:cervical condylomatosis','STDs:vaginal condylomatosis',
+            'STDs:pelvic inflammatory disease','STDs:genital herpes',
+           'STDs:molluscum contagiosum','STDs:AIDS','STDs:Hepatitis B',
+           'STDs:HPV','Dx:CIN']
+
+Df = df4.drop(drop_col, axis=1) 
+
+X = np.array(Df.loc[:,
+    ['Age','Number of sexual partners','First sexual intercourse',
+     'Num of pregnancies','Smokes','Smokes (years)','Smokes (packs/year)',
+     'Hormonal Contraceptives','Hormonal Contraceptives (years)',
+     'IUD','IUD (years)','STDs','STDs (number)','STDs:condylomatosis',
+     'STDs:vulvo-perineal condylomatosis','STDs:syphilis','STDs:HIV',
+     'STDs: Number of diagnosis','Dx:Cancer','Dx:HPV','Dx',
+     'Hinselmann','Schiller','Citology','Biopsy']])
+     
+from sklearn.preprocessing import StandardScaler
+scaler = StandardScaler()
+scaler.fit(X)
+X_std = scaler.fit_transform(X)
+
+from sklearn.decomposition import PCA
+pca = PCA(n_components=25)
+X_pca = pca.fit_transform(X_std)
+
+from sklearn.cluster import KMeans
+km = KMeans(n_clusters=2,  
+            init='random',  
+            n_init=10,     
+            max_iter=300,   
+            tol=1e-04,      
+            random_state=0, 
+           )
+
+
+y_km = km.fit_predict(X_pca[:,]) 
+
+import seaborn as sns
+
+Xi = np.array(Df.loc[:,[ 'Smokes',
+                         'Dx:HPV',
+    
+                         'STDs: Number of diagnosis',
+                         'Num of pregnancies',
+                         'STDs'         
+]])
+
+
+scaler.fit(Xi)
+Xi_std = scaler.fit_transform(Xi)
+
+
+pcai = PCA(n_components=5)
+Xi_pcai = pcai.fit_transform(Xi_std)
+
+
+kmi = KMeans(n_clusters=2,   
+            init='random',  
+            n_init=100,      
+            max_iter=300,   
+            tol=1e-04,      
+            random_state=0, 
+           )
+
+
+yi_kmi = kmi.fit_predict(Xi_pcai[:,])
+
+
+from sklearn import metrics
+metrics.precision_score(y_km, yi_kmi)
+
+metrics.accuracy_score(y_km,yi_kmi)
+
+metrics.recall_score(y_km, yi_kmi)
+
+
+print('precision :'+str(metrics.precision_score(y_km, yi_kmi)))
+print('accuracy :'+str(metrics.accuracy_score(y_km,yi_kmi)))
+print('recall :'+str(metrics.recall_score(y_km, yi_kmi)))
